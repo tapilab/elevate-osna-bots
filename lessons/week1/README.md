@@ -42,7 +42,11 @@ cd elevate-osna-team1   # enter your project repository folder
 python setup.py develop # install the code. 
 ```
 
-This may take a while, as all dependencies listed in the `requirements.txt` file will also be installed. (Windows users: if you're having troubles, try reading [this](http://timmyreilly.azurewebsites.net/python-flask-windows-development-environment-setup/)).
+This may take a while, as all dependencies listed in the `requirements.txt` file will also be installed.
+
+Windows users: if you're having troubles, try reading [this](http://timmyreilly.azurewebsites.net/python-flask-windows-development-environment-setup/). It looks like you will need to:
+- install `pip install virtualenvwrapper-win`
+- instead of `virtualenv osna-virtual` above, do `mkvirtualenv osna-virtual`
 
 5. If everything worked properly, you should now be able to run your project's command-line tool by typing:  
 ```
@@ -124,6 +128,14 @@ Today we will learn about the data used in the project, how to parse it, and how
 
 1. Download the data for your project (links send via email).
 2. Complete the `stats` command to compute the required statistics of the data.
+  - Number of unique users
+  - Number of unique messages
+  - Number of users/message per class/category.
+  - Number of unique words (using the tweet_tokenizer from class)
+  - Number of tokens (non-unique words)
+  - 50 most common words
+  - 50 most common words per class.
+  
 
 <br>
 

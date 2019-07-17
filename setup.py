@@ -35,6 +35,7 @@ setup(
         'console_scripts': [
             'osna=osna.cli:main',
             'web=osna.cli:web',
+            'stats=osna.cli:stats',
         ],
     },
     install_requires=requirements,
