@@ -44,9 +44,10 @@ python setup.py develop # install the code.
 
 This may take a while, as all dependencies listed in the `requirements.txt` file will also be installed.
 
-Windows users: if you're having troubles, try reading [this](http://timmyreilly.azurewebsites.net/python-flask-windows-development-environment-setup/). It looks like you will need to:
+**Windows users**: if you're having troubles, try reading [this](http://timmyreilly.azurewebsites.net/python-flask-windows-development-environment-setup/). It looks like you will need to:
 - install `pip install virtualenvwrapper-win`
 - instead of `virtualenv osna-virtual` above, do `mkvirtualenv osna-virtual`
+- other students have also had luck starting environments with the command `py -3 -m venv env env\scripts\activate`
 
 5. If everything worked properly, you should now be able to run your project's command-line tool by typing:  
 ```

@@ -14,9 +14,10 @@ def main(args=None):
 
 @main.command('web')
 @click.option('-t', '--twitter-credentials', required=False, type=click.Path(exists=True), show_default=True, default=credentials_path, help='a json file of twitter tokens')
-def web(twitter_credentials):
+@click.option('-p', '--port', required=False, default=5000, show_default=True, help='port of web server')
+def web(twitter_credentials, port):
 	from .app import app
-	app.run(host='0.0.0.0', debug=True)
+	app.run(host='0.0.0.0', debug=True, port=port)
 	
 
 @main.command('stats')
