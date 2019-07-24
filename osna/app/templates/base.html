@@ -19,15 +19,16 @@
         
         {% block content %}{% endblock %}
 
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
+{#        {% with messages = get_flashed_messages() %}#}
+{#        {% with messages = value %}#}
+{#        {% if messages %}#}
         <ul>
-            {% for message in messages %}
+            {% for message in value %}
             <li>{{ message }}</li>
             {% endfor %}
         </ul>
-        {% endif %}
-        {% endwith %}
+{#        {% endif %}#}
+{#        {% endwith %}#}
         <br>
     </body>
 </html>
