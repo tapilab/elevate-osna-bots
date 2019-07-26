@@ -19,8 +19,11 @@
 {#        {% with messages = get_flashed_messages() %}#}
 {#        {% with messages = value %}#}
 {#        {% if messages %}#}
+        <p style="color: blue">
+           Prediction = {{ prediction }}
+        </p>
         <ul>
-            {% for message in value %}
+            {% for message in tweets %}
             <li>{{ message }}</li>
             {% endfor %}
         </ul>

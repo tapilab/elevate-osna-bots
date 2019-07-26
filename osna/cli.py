@@ -7,10 +7,7 @@ import pickle
 import sys
 import gzip
 import json
-import pandas as pd
-import re
 from collections import Counter
-
 import numpy as np
 import pandas as pd
 import re
@@ -19,7 +16,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, classification_report
-
+from scipy.sparse import csr_matrix, hstack # "horizontal stack"
 from . import credentials_path, clf_path
 
 @click.group()
@@ -135,23 +132,93 @@ def train(directory):
     print('reading from %s' % directory)
     # (1) Read the data...
     #
+    df = read_data(directory)
+
     # (2) Create classifier and vectorizer.
-    clf = LogisticRegression() # set best parameters 
-    vec = CountVectorizer()    # set best parameters
-    
+    X, dict_vec = make_features(df)
+    count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
+    X_words = count_vec.fit_transform(df.tweets_texts)
+    optimal_X_all = hstack([X, X_words]).tocsr()
+    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=1000, C=1, penalty='l2')
+    y = np.array(df.label)
+    clf.fit(optimal_X_all, y)
+
     # (3) do cross-validation and print out validation metrics
     # (classification_report)
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    accuracies = []
+    for train, test in kf.split(optimal_X_all):
+        clf.fit(optimal_X_all[train], y[train])
+        pred = clf.predict(optimal_X_all[test])
+        accuracies.append(accuracy_score(y[test], pred))
+    print('accuracy over all cross-validation folds: %s' % str(accuracies))
+    print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
 
     # (4) Finally, train on ALL data one final time and
     # train...
     # save the classifier
-    pickle.dump((clf, vec), open(clf_path, 'wb'))
+    pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
 
+
+def read_data(directory):
+    bots = []
+    humans = []
+    folder = ['/bots', '/humans']
+    name = '/*.json.gz'
+    for f in folder:
+        paths = glob.glob(directory + f + name)
+        for p in paths:
+            with gzip.open(p, 'r') as file:
+                for line in file:
+                    if f == folder[0]:
+                        bots.append(json.loads(line))
+                    elif f == folder[1]:
+                        humans.append(json.loads(line))
+    df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count']]
+    df_bots['label'] = 'bot'
+    df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count']]
+    df_humans['label'] = 'human'
+    frames = [df_bots, df_humans]
+    df = pd.concat(frames)
+    users = bots + humans
+    tweets_avg_mentions = []
+    tweets_avg_urls = []
+    factor = 100
+    tweets_texts = []
+    for u in users:
+        tweets = u['tweets']  # a list of dicts
+        texts = [t['full_text'] for t in tweets]
+        tweets_texts.append(str(texts).strip('[]'))
+        count_mention = 0
+        count_url = 0
+        for s in texts:
+            if 'http' in s:
+                count_url += 1
+            if '@' in s:
+                count_mention += 1
+        tweets_avg_urls.append(factor * count_url / len(texts))
+        tweets_avg_mentions.append(factor * count_mention / len(texts))
+    df['tweets_texts'] = tweets_texts
+    df['tweets_avg_urls'] = tweets_avg_urls
+    df['tweets_avg_mentions'] = tweets_avg_mentions
+    return df
 
 def make_features(df):
     ## Add your code to create features.
-    pass
+    vec = DictVectorizer()
+    feature_dicts = []
+    # labels_to_track = ['tweets_avg_urls', 'tweets_avg_mentions', 'listed_count']
+    for i, row in df.iterrows():
+        features = {}
+        features['tweets_avg_urls'] = row['tweets_avg_urls']
+        features['tweets_avg_mentions'] = row['tweets_avg_mentions']
+        # features['listed_count'] = row['listed_count']
+        feature_dicts.append(features)
+    X = vec.fit_transform(feature_dicts)
+    #     print(X)
+    return X, vec
+    # pass
 
-
+# def print_top_features()
 if __name__ == "__main__":
     sys.exit(main())  # pragma: no cover
