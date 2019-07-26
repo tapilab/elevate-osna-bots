@@ -3,10 +3,16 @@ from . import app
 from .forms import MyForm
 from ..mytwitter import Twitter
 #from ..u import get_twitter_data, N_TWEETS
-from .. import credentials_path
+from .. import credentials_path, clf_path
+
+import pickle
 import sys
 
 twapi = Twitter(credentials_path)
+clf, vec = pickle.load(open(clf_path, 'rb'))
+print('read clf %s' % str(clf))
+print('read vec %s' % str(vec))
+
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 def index():
