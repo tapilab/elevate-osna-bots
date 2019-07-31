@@ -16,8 +16,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, classification_report
-from scipy.sparse import csr_matrix, hstack # "horizontal stack"
+from scipy.sparse import csr_matrix, hstack  # "horizontal stack"
 from . import credentials_path, clf_path
+
 
 @click.group()
 def main(args=None):
@@ -123,6 +124,7 @@ def stats(directory):
     # recursively search subdirectories.
     do_calculation(directory)
 
+
 @main.command('train')
 @click.argument('directory', type=click.Path(exists=True))
 def train(directory):
@@ -154,12 +156,13 @@ def train(directory):
         accuracies.append(accuracy_score(y[test], pred))
     print('accuracy over all cross-validation folds: %s' % str(accuracies))
     print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
-    y_pred=clf.predict(optimal_X_all)
+    y_pred = clf.predict(optimal_X_all)
     print("classification_report: \n", classification_report(y, y_pred))
 
     # (4) Finally, train on ALL data one final time and
     # train...
     # save the classifier
+    print_top_features(dict_vec, count_vec, clf)
     pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
 
 
@@ -195,6 +198,7 @@ def read_data(directory):
     df['tweets_texts'] = tweets_texts
     return df
 
+
 def make_features(df):
     ## Add your code to create features.
     vec = DictVectorizer()
@@ -226,6 +230,18 @@ def get_tweets_features(texts):
         features['tweets_avg_urls'] = factor * count_url / len(texts)
         features['tweets_avg_mentions'] = factor * count_mention / len(texts)
     return features
+
+
+def print_top_features(vec, count_vec, clf):
+    # sort coefficients by class.
+    features = vec.get_feature_names()[0:3] + count_vec.get_feature_names()
+    coef = [-clf.coef_[0], clf.coef_[0]]
+    for ci, class_name in enumerate(clf.classes_):
+        print('top 15 features for class %s:' % class_name)
+        for fi in coef[ci].argsort()[-1:-16:-1]:  # descending order.
+            print('%20s\t%.2f' % (features[fi], coef[ci][fi]))
+        print()
+
 
 # def print_top_features()
 if __name__ == "__main__":
