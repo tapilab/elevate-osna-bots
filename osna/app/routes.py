@@ -7,7 +7,7 @@ from .. import credentials_path, clf_path
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from scipy.sparse import csr_matrix, hstack # "horizontal stack"
-
+from ..cli import get_tweets_features
 import pickle
 import sys
 
@@ -33,23 +33,10 @@ def index():
 
 def get_prediction(tweets):
     feature_dicts = []
-    texts = tweets
-    tweets_texts = str(texts)
-    count_mention = 0
-    count_url = 0
-    factor = 100
-    features = {}
-    for s in texts:
-        if 'http' in s:
-            count_url += 1
-        if '@' in s:
-            count_mention += 1
-    features['tweets_avg_urls'] = factor * count_url / len(texts)
-    features['tweets_avg_mentions'] = factor * count_mention / len(texts)
+    features = get_tweets_features(tweets)
     feature_dicts.append(features)
-
-    X_words = count_vec.transform([tweets_texts])
     X_features = dict_vec.transform(feature_dicts)
+    X_words = count_vec.transform([str(tweets)])
     X_all = hstack([X_features, X_words]).tocsr()
     prediction = clf.predict(X_all)[0]
     return prediction

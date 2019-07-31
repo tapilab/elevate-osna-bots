@@ -137,6 +137,7 @@ def train(directory):
     # (2) Create classifier and vectorizer.
     X, dict_vec = make_features(df)
     count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
+
     X_words = count_vec.fit_transform(df.tweets_texts)
     optimal_X_all = hstack([X, X_words]).tocsr()
     clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=1000, C=1, penalty='l2')
@@ -153,6 +154,8 @@ def train(directory):
         accuracies.append(accuracy_score(y[test], pred))
     print('accuracy over all cross-validation folds: %s' % str(accuracies))
     print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
+    y_pred=clf.predict(optimal_X_all)
+    print("classification_report: \n", classification_report(y, y_pred))
 
     # (4) Finally, train on ALL data one final time and
     # train...
@@ -181,43 +184,48 @@ def read_data(directory):
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
     users = bots + humans
-    tweets_avg_mentions = []
-    tweets_avg_urls = []
-    factor = 100
+    # tweets_avg_mentions = []
+    # tweets_avg_urls = []
+    # factor = 100
     tweets_texts = []
     for u in users:
         tweets = u['tweets']  # a list of dicts
         texts = [t['full_text'] for t in tweets]
         tweets_texts.append(str(texts).strip('[]'))
-        count_mention = 0
-        count_url = 0
-        for s in texts:
-            if 'http' in s:
-                count_url += 1
-            if '@' in s:
-                count_mention += 1
-        tweets_avg_urls.append(factor * count_url / len(texts))
-        tweets_avg_mentions.append(factor * count_mention / len(texts))
     df['tweets_texts'] = tweets_texts
-    df['tweets_avg_urls'] = tweets_avg_urls
-    df['tweets_avg_mentions'] = tweets_avg_mentions
     return df
 
 def make_features(df):
     ## Add your code to create features.
     vec = DictVectorizer()
     feature_dicts = []
-    # labels_to_track = ['tweets_avg_urls', 'tweets_avg_mentions', 'listed_count']
     for i, row in df.iterrows():
-        features = {}
-        features['tweets_avg_urls'] = row['tweets_avg_urls']
-        features['tweets_avg_mentions'] = row['tweets_avg_mentions']
-        # features['listed_count'] = row['listed_count']
+        tweets = row['tweets']
+        texts = [t['full_text'] for t in tweets]
+        features = get_tweets_features(texts)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
-    #     print(X)
     return X, vec
     # pass
+
+
+def get_tweets_features(texts):
+    count_mention = 0
+    count_url = 0
+    factor = 100
+    features = {}
+    for s in texts:
+        if 'http' in s:
+            count_url += 1
+        if '@' in s:
+            count_mention += 1
+    if len(texts) == 0:
+        features['tweets_avg_urls'] = 0
+        features['tweets_avg_mentions'] = 0
+    else:
+        features['tweets_avg_urls'] = factor * count_url / len(texts)
+        features['tweets_avg_mentions'] = factor * count_mention / len(texts)
+    return features
 
 # def print_top_features()
 if __name__ == "__main__":
