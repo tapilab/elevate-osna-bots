@@ -34,6 +34,8 @@ except:
 config_path = osna_path + 'osna.cfg'
 # twitter credentials.
 credentials_path = osna_path + 'credentials.json'
+# classifier
+clf_path = osna_path + 'clf.pkl'
 
 # write default config if not present.
 if not os.path.isfile(config_path):

@@ -3,13 +3,21 @@
 """Console script for elevate_osna."""
 import click
 import glob
+import pickle
 import sys
 import gzip
 import json
+from collections import Counter
+import numpy as np
 import pandas as pd
 import re
-from . import credentials_path, config
-from collections import Counter
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score, classification_report
+from scipy.sparse import csr_matrix, hstack  # "horizontal stack"
+from . import credentials_path, clf_path
 
 
 @click.group()
@@ -117,5 +125,124 @@ def stats(directory):
     do_calculation(directory)
 
 
+@main.command('train')
+@click.argument('directory', type=click.Path(exists=True))
+def train(directory):
+    """
+    Train a classifier and save it.
+    """
+    print('reading from %s' % directory)
+    # (1) Read the data...
+    #
+    df = read_data(directory)
+
+    # (2) Create classifier and vectorizer.
+    X, dict_vec = make_features(df)
+    count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
+
+    X_words = count_vec.fit_transform(df.tweets_texts)
+    optimal_X_all = hstack([X, X_words]).tocsr()
+    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=1000, C=1, penalty='l2')
+    y = np.array(df.label)
+    clf.fit(optimal_X_all, y)
+
+    # (3) do cross-validation and print out validation metrics
+    # (classification_report)
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    accuracies = []
+    for train, test in kf.split(optimal_X_all):
+        clf.fit(optimal_X_all[train], y[train])
+        pred = clf.predict(optimal_X_all[test])
+        accuracies.append(accuracy_score(y[test], pred))
+    print('accuracy over all cross-validation folds: %s' % str(accuracies))
+    print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
+    y_pred = clf.predict(optimal_X_all)
+    print("classification_report: \n", classification_report(y, y_pred))
+
+    # (4) Finally, train on ALL data one final time and
+    # train...
+    # save the classifier
+    print_top_features(dict_vec, count_vec, clf)
+    pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
+
+
+def read_data(directory):
+    bots = []
+    humans = []
+    folder = ['/bots', '/humans']
+    name = '/*.json.gz'
+    for f in folder:
+        paths = glob.glob(directory + f + name)
+        for p in paths:
+            with gzip.open(p, 'r') as file:
+                for line in file:
+                    if f == folder[0]:
+                        bots.append(json.loads(line))
+                    elif f == folder[1]:
+                        humans.append(json.loads(line))
+    df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count']]
+    df_bots['label'] = 'bot'
+    df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count']]
+    df_humans['label'] = 'human'
+    frames = [df_bots, df_humans]
+    df = pd.concat(frames)
+    users = bots + humans
+    # tweets_avg_mentions = []
+    # tweets_avg_urls = []
+    # factor = 100
+    tweets_texts = []
+    for u in users:
+        tweets = u['tweets']  # a list of dicts
+        texts = [t['full_text'] for t in tweets]
+        tweets_texts.append(str(texts).strip('[]'))
+    df['tweets_texts'] = tweets_texts
+    return df
+
+
+def make_features(df):
+    ## Add your code to create features.
+    vec = DictVectorizer()
+    feature_dicts = []
+    for i, row in df.iterrows():
+        tweets = row['tweets']
+        texts = [t['full_text'] for t in tweets]
+        features = get_tweets_features(texts)
+        feature_dicts.append(features)
+    X = vec.fit_transform(feature_dicts)
+    return X, vec
+    # pass
+
+
+def get_tweets_features(texts):
+    count_mention = 0
+    count_url = 0
+    factor = 100
+    features = {}
+    for s in texts:
+        if 'http' in s:
+            count_url += 1
+        if '@' in s:
+            count_mention += 1
+    if len(texts) == 0:
+        features['tweets_avg_urls'] = 0
+        features['tweets_avg_mentions'] = 0
+    else:
+        features['tweets_avg_urls'] = factor * count_url / len(texts)
+        features['tweets_avg_mentions'] = factor * count_mention / len(texts)
+    return features
+
+
+def print_top_features(vec, count_vec, clf):
+    # sort coefficients by class.
+    features = vec.get_feature_names()[0:3] + count_vec.get_feature_names()
+    coef = [-clf.coef_[0], clf.coef_[0]]
+    for ci, class_name in enumerate(clf.classes_):
+        print('top 15 features for class %s:' % class_name)
+        for fi in coef[ci].argsort()[-1:-16:-1]:  # descending order.
+            print('%20s\t%.2f' % (features[fi], coef[ci][fi]))
+        print()
+
+
+# def print_top_features()
 if __name__ == "__main__":
     sys.exit(main())  # pragma: no cover
