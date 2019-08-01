@@ -1,0 +1,1838 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 92,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from collections import Counter\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import re\n",
+    "import glob\n",
+    "import gzip\n",
+    "import json\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.feature_extraction import DictVectorizer\n",
+    "from sklearn.neural_network import MLPClassifier\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.model_selection import KFold\n",
+    "from sklearn.metrics import accuracy_score"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 93,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>screen_name</th>\n",
+       "      <th>tweets</th>\n",
+       "      <th>listed_count</th>\n",
+       "      <th>label</th>\n",
+       "      <th>tweets_avg_urls</th>\n",
+       "      <th>tweets_avg_mentions</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>carlos_eggbot</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:36:07 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>10.500000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>ecolo_ebooks</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:36:11 +0000 201...</td>\n",
+       "      <td>2</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>AllStarSMBot</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:36:28 +0000 201...</td>\n",
+       "      <td>3</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>saionji_en</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:36:52 +0000 201...</td>\n",
+       "      <td>3</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>KimClune</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:37:20 +0000 201...</td>\n",
+       "      <td>329</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>28.500000</td>\n",
+       "      <td>2.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>CatsDogsBOT</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:38:10 +0000 201...</td>\n",
+       "      <td>3</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>100.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>bluejovanka</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:38:14 +0000 201...</td>\n",
+       "      <td>47</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>37.688442</td>\n",
+       "      <td>32.160804</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>anittavota4</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:39:19 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>justtraveluk</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:39:21 +0000 201...</td>\n",
+       "      <td>11</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>100.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>rhaudiencebot</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:40:08 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>LexyintheCity</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:40:11 +0000 201...</td>\n",
+       "      <td>69</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>24.500000</td>\n",
+       "      <td>73.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>kimberlymaich</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:41:07 +0000 201...</td>\n",
+       "      <td>11</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>31.313131</td>\n",
+       "      <td>82.323232</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>timotheeribeiro</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:41:23 +0000 201...</td>\n",
+       "      <td>65</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>100.000000</td>\n",
+       "      <td>86.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>666dikuto</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:41:42 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>GLaDOSystem</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:41:55 +0000 201...</td>\n",
+       "      <td>21</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>15</th>\n",
+       "      <td>gotpie_ebooks</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:42:31 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>16</th>\n",
+       "      <td>Pawtersimms1</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:44:14 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>100.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>17</th>\n",
+       "      <td>mikan02862611</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:45:11 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>18</th>\n",
+       "      <td>WeatherTucson</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:45:12 +0000 201...</td>\n",
+       "      <td>7</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>100.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>19</th>\n",
+       "      <td>asta_ebooks</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:45:32 +0000 201...</td>\n",
+       "      <td>2</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>2.000000</td>\n",
+       "      <td>1.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>20</th>\n",
+       "      <td>taguigtwinktop</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:45:34 +0000 201...</td>\n",
+       "      <td>10</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>6.000000</td>\n",
+       "      <td>98.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>21</th>\n",
+       "      <td>stevenboss</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:45:44 +0000 201...</td>\n",
+       "      <td>16</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>97.000000</td>\n",
+       "      <td>58.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>22</th>\n",
+       "      <td>latikia</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:46:14 +0000 201...</td>\n",
+       "      <td>288</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>95.000000</td>\n",
+       "      <td>6.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>23</th>\n",
+       "      <td>positivenagi</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:50:00 +0000 201...</td>\n",
+       "      <td>2</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>24</th>\n",
+       "      <td>cheesucheesu</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:50:11 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>5.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>25</th>\n",
+       "      <td>fetisbieber</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:50:43 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>26</th>\n",
+       "      <td>anittavota5</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:51:08 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>27</th>\n",
+       "      <td>EngkoBoti</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:51:16 +0000 201...</td>\n",
+       "      <td>2</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>28</th>\n",
+       "      <td>ZikaSdv</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:51:32 +0000 201...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>29</th>\n",
+       "      <td>lancxelot</td>\n",
+       "      <td>[{'created_at': 'Sat Jun 01 18:51:27 +0000 201...</td>\n",
+       "      <td>2</td>\n",
+       "      <td>bot</td>\n",
+       "      <td>78.000000</td>\n",
+       "      <td>69.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>70</th>\n",
+       "      <td>RevolutApp</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:32:51 +0000 201...</td>\n",
+       "      <td>881</td>\n",
+       "      <td>human</td>\n",
+       "      <td>12.500000</td>\n",
+       "      <td>100.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>71</th>\n",
+       "      <td>Bakari_Sellers</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:31:55 +0000 201...</td>\n",
+       "      <td>1695</td>\n",
+       "      <td>human</td>\n",
+       "      <td>46.000000</td>\n",
+       "      <td>59.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>72</th>\n",
+       "      <td>AmazonHelp</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:33:53 +0000 201...</td>\n",
+       "      <td>943</td>\n",
+       "      <td>human</td>\n",
+       "      <td>37.000000</td>\n",
+       "      <td>100.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>73</th>\n",
+       "      <td>UPSHelp</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:34:00 +0000 201...</td>\n",
+       "      <td>289</td>\n",
+       "      <td>human</td>\n",
+       "      <td>85.500000</td>\n",
+       "      <td>100.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>74</th>\n",
+       "      <td>fly2midway</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:34:23 +0000 201...</td>\n",
+       "      <td>394</td>\n",
+       "      <td>human</td>\n",
+       "      <td>77.500000</td>\n",
+       "      <td>51.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>75</th>\n",
+       "      <td>WaltThurm3</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:34:44 +0000 201...</td>\n",
+       "      <td>573</td>\n",
+       "      <td>human</td>\n",
+       "      <td>40.201005</td>\n",
+       "      <td>70.351759</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>76</th>\n",
+       "      <td>scottjohnson</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:34:59 +0000 201...</td>\n",
+       "      <td>2489</td>\n",
+       "      <td>human</td>\n",
+       "      <td>34.500000</td>\n",
+       "      <td>61.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>77</th>\n",
+       "      <td>TOIBengaluru</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:35:02 +0000 201...</td>\n",
+       "      <td>400</td>\n",
+       "      <td>human</td>\n",
+       "      <td>92.500000</td>\n",
+       "      <td>5.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>78</th>\n",
+       "      <td>LASchoolPolice</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:35:32 +0000 201...</td>\n",
+       "      <td>173</td>\n",
+       "      <td>human</td>\n",
+       "      <td>74.500000</td>\n",
+       "      <td>79.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>79</th>\n",
+       "      <td>bbmayabb</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:36:41 +0000 201...</td>\n",
+       "      <td>34</td>\n",
+       "      <td>human</td>\n",
+       "      <td>51.500000</td>\n",
+       "      <td>87.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>80</th>\n",
+       "      <td>livexlive</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:37:02 +0000 201...</td>\n",
+       "      <td>67</td>\n",
+       "      <td>human</td>\n",
+       "      <td>63.500000</td>\n",
+       "      <td>85.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>81</th>\n",
+       "      <td>Its_Katka</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:36:54 +0000 201...</td>\n",
+       "      <td>281</td>\n",
+       "      <td>human</td>\n",
+       "      <td>18.500000</td>\n",
+       "      <td>58.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>82</th>\n",
+       "      <td>OregonGovBrown</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:37:36 +0000 201...</td>\n",
+       "      <td>913</td>\n",
+       "      <td>human</td>\n",
+       "      <td>70.500000</td>\n",
+       "      <td>44.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>83</th>\n",
+       "      <td>ExpressNews</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:37:40 +0000 201...</td>\n",
+       "      <td>283</td>\n",
+       "      <td>human</td>\n",
+       "      <td>91.000000</td>\n",
+       "      <td>12.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>84</th>\n",
+       "      <td>ChuckWendig</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:37:49 +0000 201...</td>\n",
+       "      <td>4138</td>\n",
+       "      <td>human</td>\n",
+       "      <td>25.500000</td>\n",
+       "      <td>79.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>85</th>\n",
+       "      <td>chrisdeville</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:37:50 +0000 201...</td>\n",
+       "      <td>240</td>\n",
+       "      <td>human</td>\n",
+       "      <td>46.000000</td>\n",
+       "      <td>69.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>86</th>\n",
+       "      <td>VirginTrains</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:14 +0000 201...</td>\n",
+       "      <td>1566</td>\n",
+       "      <td>human</td>\n",
+       "      <td>27.000000</td>\n",
+       "      <td>99.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>87</th>\n",
+       "      <td>UNDPAzerbaijan</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:20 +0000 201...</td>\n",
+       "      <td>80</td>\n",
+       "      <td>human</td>\n",
+       "      <td>57.500000</td>\n",
+       "      <td>80.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>88</th>\n",
+       "      <td>DrNerdLove</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:39 +0000 201...</td>\n",
+       "      <td>228</td>\n",
+       "      <td>human</td>\n",
+       "      <td>27.000000</td>\n",
+       "      <td>37.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>89</th>\n",
+       "      <td>CharlesSoule</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:40 +0000 201...</td>\n",
+       "      <td>617</td>\n",
+       "      <td>human</td>\n",
+       "      <td>20.500000</td>\n",
+       "      <td>74.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>90</th>\n",
+       "      <td>fordm</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:43 +0000 201...</td>\n",
+       "      <td>1202</td>\n",
+       "      <td>human</td>\n",
+       "      <td>40.500000</td>\n",
+       "      <td>60.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>91</th>\n",
+       "      <td>ChadPawson</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:38:48 +0000 201...</td>\n",
+       "      <td>84</td>\n",
+       "      <td>human</td>\n",
+       "      <td>41.000000</td>\n",
+       "      <td>93.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>92</th>\n",
+       "      <td>ericvdunn</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:39:18 +0000 201...</td>\n",
+       "      <td>646</td>\n",
+       "      <td>human</td>\n",
+       "      <td>30.000000</td>\n",
+       "      <td>46.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>93</th>\n",
+       "      <td>RossDellenger</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:39:25 +0000 201...</td>\n",
+       "      <td>645</td>\n",
+       "      <td>human</td>\n",
+       "      <td>60.000000</td>\n",
+       "      <td>40.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>94</th>\n",
+       "      <td>MrGerryCampbell</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:39:36 +0000 201...</td>\n",
+       "      <td>81</td>\n",
+       "      <td>human</td>\n",
+       "      <td>52.000000</td>\n",
+       "      <td>65.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>95</th>\n",
+       "      <td>davidmweissman</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:39:59 +0000 201...</td>\n",
+       "      <td>444</td>\n",
+       "      <td>human</td>\n",
+       "      <td>27.500000</td>\n",
+       "      <td>82.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>96</th>\n",
+       "      <td>PaulRieckhoff</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:40:02 +0000 201...</td>\n",
+       "      <td>1386</td>\n",
+       "      <td>human</td>\n",
+       "      <td>45.500000</td>\n",
+       "      <td>84.500000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>97</th>\n",
+       "      <td>Monster</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:40:40 +0000 201...</td>\n",
+       "      <td>3638</td>\n",
+       "      <td>human</td>\n",
+       "      <td>99.000000</td>\n",
+       "      <td>100.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>98</th>\n",
+       "      <td>sligogaa</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:40:45 +0000 201...</td>\n",
+       "      <td>174</td>\n",
+       "      <td>human</td>\n",
+       "      <td>18.500000</td>\n",
+       "      <td>34.000000</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>99</th>\n",
+       "      <td>FunSizeSuze</td>\n",
+       "      <td>[{'created_at': 'Fri May 31 18:40:46 +0000 201...</td>\n",
+       "      <td>312</td>\n",
+       "      <td>human</td>\n",
+       "      <td>37.000000</td>\n",
+       "      <td>84.500000</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>200 rows × 6 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "        screen_name                                             tweets  \\\n",
+       "0     carlos_eggbot  [{'created_at': 'Sat Jun 01 18:36:07 +0000 201...   \n",
+       "1      ecolo_ebooks  [{'created_at': 'Sat Jun 01 18:36:11 +0000 201...   \n",
+       "2      AllStarSMBot  [{'created_at': 'Sat Jun 01 18:36:28 +0000 201...   \n",
+       "3        saionji_en  [{'created_at': 'Sat Jun 01 18:36:52 +0000 201...   \n",
+       "4          KimClune  [{'created_at': 'Sat Jun 01 18:37:20 +0000 201...   \n",
+       "5       CatsDogsBOT  [{'created_at': 'Sat Jun 01 18:38:10 +0000 201...   \n",
+       "6       bluejovanka  [{'created_at': 'Sat Jun 01 18:38:14 +0000 201...   \n",
+       "7       anittavota4  [{'created_at': 'Sat Jun 01 18:39:19 +0000 201...   \n",
+       "8      justtraveluk  [{'created_at': 'Sat Jun 01 18:39:21 +0000 201...   \n",
+       "9     rhaudiencebot  [{'created_at': 'Sat Jun 01 18:40:08 +0000 201...   \n",
+       "10    LexyintheCity  [{'created_at': 'Sat Jun 01 18:40:11 +0000 201...   \n",
+       "11    kimberlymaich  [{'created_at': 'Sat Jun 01 18:41:07 +0000 201...   \n",
+       "12  timotheeribeiro  [{'created_at': 'Sat Jun 01 18:41:23 +0000 201...   \n",
+       "13        666dikuto  [{'created_at': 'Sat Jun 01 18:41:42 +0000 201...   \n",
+       "14      GLaDOSystem  [{'created_at': 'Sat Jun 01 18:41:55 +0000 201...   \n",
+       "15    gotpie_ebooks  [{'created_at': 'Sat Jun 01 18:42:31 +0000 201...   \n",
+       "16     Pawtersimms1  [{'created_at': 'Sat Jun 01 18:44:14 +0000 201...   \n",
+       "17    mikan02862611  [{'created_at': 'Sat Jun 01 18:45:11 +0000 201...   \n",
+       "18    WeatherTucson  [{'created_at': 'Sat Jun 01 18:45:12 +0000 201...   \n",
+       "19      asta_ebooks  [{'created_at': 'Sat Jun 01 18:45:32 +0000 201...   \n",
+       "20   taguigtwinktop  [{'created_at': 'Sat Jun 01 18:45:34 +0000 201...   \n",
+       "21       stevenboss  [{'created_at': 'Sat Jun 01 18:45:44 +0000 201...   \n",
+       "22          latikia  [{'created_at': 'Sat Jun 01 18:46:14 +0000 201...   \n",
+       "23     positivenagi  [{'created_at': 'Sat Jun 01 18:50:00 +0000 201...   \n",
+       "24     cheesucheesu  [{'created_at': 'Sat Jun 01 18:50:11 +0000 201...   \n",
+       "25      fetisbieber  [{'created_at': 'Sat Jun 01 18:50:43 +0000 201...   \n",
+       "26      anittavota5  [{'created_at': 'Sat Jun 01 18:51:08 +0000 201...   \n",
+       "27        EngkoBoti  [{'created_at': 'Sat Jun 01 18:51:16 +0000 201...   \n",
+       "28          ZikaSdv  [{'created_at': 'Sat Jun 01 18:51:32 +0000 201...   \n",
+       "29        lancxelot  [{'created_at': 'Sat Jun 01 18:51:27 +0000 201...   \n",
+       "..              ...                                                ...   \n",
+       "70       RevolutApp  [{'created_at': 'Fri May 31 18:32:51 +0000 201...   \n",
+       "71   Bakari_Sellers  [{'created_at': 'Fri May 31 18:31:55 +0000 201...   \n",
+       "72       AmazonHelp  [{'created_at': 'Fri May 31 18:33:53 +0000 201...   \n",
+       "73          UPSHelp  [{'created_at': 'Fri May 31 18:34:00 +0000 201...   \n",
+       "74       fly2midway  [{'created_at': 'Fri May 31 18:34:23 +0000 201...   \n",
+       "75       WaltThurm3  [{'created_at': 'Fri May 31 18:34:44 +0000 201...   \n",
+       "76     scottjohnson  [{'created_at': 'Fri May 31 18:34:59 +0000 201...   \n",
+       "77     TOIBengaluru  [{'created_at': 'Fri May 31 18:35:02 +0000 201...   \n",
+       "78   LASchoolPolice  [{'created_at': 'Fri May 31 18:35:32 +0000 201...   \n",
+       "79         bbmayabb  [{'created_at': 'Fri May 31 18:36:41 +0000 201...   \n",
+       "80        livexlive  [{'created_at': 'Fri May 31 18:37:02 +0000 201...   \n",
+       "81        Its_Katka  [{'created_at': 'Fri May 31 18:36:54 +0000 201...   \n",
+       "82   OregonGovBrown  [{'created_at': 'Fri May 31 18:37:36 +0000 201...   \n",
+       "83      ExpressNews  [{'created_at': 'Fri May 31 18:37:40 +0000 201...   \n",
+       "84      ChuckWendig  [{'created_at': 'Fri May 31 18:37:49 +0000 201...   \n",
+       "85     chrisdeville  [{'created_at': 'Fri May 31 18:37:50 +0000 201...   \n",
+       "86     VirginTrains  [{'created_at': 'Fri May 31 18:38:14 +0000 201...   \n",
+       "87   UNDPAzerbaijan  [{'created_at': 'Fri May 31 18:38:20 +0000 201...   \n",
+       "88       DrNerdLove  [{'created_at': 'Fri May 31 18:38:39 +0000 201...   \n",
+       "89     CharlesSoule  [{'created_at': 'Fri May 31 18:38:40 +0000 201...   \n",
+       "90            fordm  [{'created_at': 'Fri May 31 18:38:43 +0000 201...   \n",
+       "91       ChadPawson  [{'created_at': 'Fri May 31 18:38:48 +0000 201...   \n",
+       "92        ericvdunn  [{'created_at': 'Fri May 31 18:39:18 +0000 201...   \n",
+       "93    RossDellenger  [{'created_at': 'Fri May 31 18:39:25 +0000 201...   \n",
+       "94  MrGerryCampbell  [{'created_at': 'Fri May 31 18:39:36 +0000 201...   \n",
+       "95   davidmweissman  [{'created_at': 'Fri May 31 18:39:59 +0000 201...   \n",
+       "96    PaulRieckhoff  [{'created_at': 'Fri May 31 18:40:02 +0000 201...   \n",
+       "97          Monster  [{'created_at': 'Fri May 31 18:40:40 +0000 201...   \n",
+       "98         sligogaa  [{'created_at': 'Fri May 31 18:40:45 +0000 201...   \n",
+       "99      FunSizeSuze  [{'created_at': 'Fri May 31 18:40:46 +0000 201...   \n",
+       "\n",
+       "    listed_count  label  tweets_avg_urls  tweets_avg_mentions  \n",
+       "0              0    bot        10.500000             0.000000  \n",
+       "1              2    bot         0.000000             0.000000  \n",
+       "2              3    bot         0.000000             0.000000  \n",
+       "3              3    bot         0.000000             0.000000  \n",
+       "4            329    bot        28.500000             2.500000  \n",
+       "5              3    bot       100.000000             0.000000  \n",
+       "6             47    bot        37.688442            32.160804  \n",
+       "7              0    bot         0.000000             0.000000  \n",
+       "8             11    bot       100.000000             0.000000  \n",
+       "9              0    bot         0.000000             0.000000  \n",
+       "10            69    bot        24.500000            73.000000  \n",
+       "11            11    bot        31.313131            82.323232  \n",
+       "12            65    bot       100.000000            86.000000  \n",
+       "13             0    bot         0.000000             0.000000  \n",
+       "14            21    bot         0.000000             0.000000  \n",
+       "15             0    bot         0.000000             0.000000  \n",
+       "16             0    bot       100.000000             0.000000  \n",
+       "17             0    bot         0.000000             0.000000  \n",
+       "18             7    bot       100.000000             0.000000  \n",
+       "19             2    bot         2.000000             1.000000  \n",
+       "20            10    bot         6.000000            98.000000  \n",
+       "21            16    bot        97.000000            58.000000  \n",
+       "22           288    bot        95.000000             6.500000  \n",
+       "23             2    bot         0.000000             0.000000  \n",
+       "24             0    bot         5.000000             0.000000  \n",
+       "25             0    bot         0.000000             0.000000  \n",
+       "26             0    bot         0.000000             0.000000  \n",
+       "27             2    bot         0.000000             0.000000  \n",
+       "28             0    bot         0.000000             0.000000  \n",
+       "29             2    bot        78.000000            69.500000  \n",
+       "..           ...    ...              ...                  ...  \n",
+       "70           881  human        12.500000           100.000000  \n",
+       "71          1695  human        46.000000            59.000000  \n",
+       "72           943  human        37.000000           100.000000  \n",
+       "73           289  human        85.500000           100.000000  \n",
+       "74           394  human        77.500000            51.000000  \n",
+       "75           573  human        40.201005            70.351759  \n",
+       "76          2489  human        34.500000            61.500000  \n",
+       "77           400  human        92.500000             5.000000  \n",
+       "78           173  human        74.500000            79.500000  \n",
+       "79            34  human        51.500000            87.000000  \n",
+       "80            67  human        63.500000            85.000000  \n",
+       "81           281  human        18.500000            58.000000  \n",
+       "82           913  human        70.500000            44.500000  \n",
+       "83           283  human        91.000000            12.500000  \n",
+       "84          4138  human        25.500000            79.500000  \n",
+       "85           240  human        46.000000            69.000000  \n",
+       "86          1566  human        27.000000            99.000000  \n",
+       "87            80  human        57.500000            80.000000  \n",
+       "88           228  human        27.000000            37.000000  \n",
+       "89           617  human        20.500000            74.000000  \n",
+       "90          1202  human        40.500000            60.000000  \n",
+       "91            84  human        41.000000            93.000000  \n",
+       "92           646  human        30.000000            46.000000  \n",
+       "93           645  human        60.000000            40.500000  \n",
+       "94            81  human        52.000000            65.000000  \n",
+       "95           444  human        27.500000            82.000000  \n",
+       "96          1386  human        45.500000            84.500000  \n",
+       "97          3638  human        99.000000           100.000000  \n",
+       "98           174  human        18.500000            34.000000  \n",
+       "99           312  human        37.000000            84.500000  \n",
+       "\n",
+       "[200 rows x 6 columns]"
+      ]
+     },
+     "execution_count": 93,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "def load_data(datafile):\n",
+    "    \"\"\"\n",
+    "    Read your data into a single pandas dataframe where\n",
+    "    - each row is an instance to be classified\n",
+    "    (this could be a tweet, user, or news article, depending on your project)\n",
+    "    - there is a column called `label` which stores the class label (e.g., the true\n",
+    "      category for this row)\n",
+    "    \"\"\"\n",
+    "    bots = []\n",
+    "    humans = []\n",
+    "    folder = ['/bots', '/humans']\n",
+    "    name = '/*.json.gz'\n",
+    "    for f in folder:\n",
+    "        paths = glob.glob(datafile + f + name)\n",
+    "        for p in paths:\n",
+    "            with gzip.open(p, 'r') as file:\n",
+    "                for line in file:\n",
+    "                    if f == folder[0]:\n",
+    "                        bots.append(json.loads(line))\n",
+    "                    elif f == folder[1]:\n",
+    "                        humans.append(json.loads(line))\n",
+    "    df_bots = pd.DataFrame(bots)[['screen_name','tweets','listed_count']]\n",
+    "    df_bots['label'] = 'bot'\n",
+    "    df_humans = pd.DataFrame(humans)[['screen_name','tweets','listed_count']]\n",
+    "    df_humans['label'] = 'human'\n",
+    "    frames = [df_bots, df_humans]\n",
+    "    df = pd.concat(frames)\n",
+    "    users = bots + humans\n",
+    "    tweets = [u['tweets'] for u in users]\n",
+    "    text = [d['full_text'] for t in tweets for d in t] \n",
+    "\n",
+    "#     tweets_avg_len = []\n",
+    "    tweets_avg_mentions = []\n",
+    "    tweets_avg_urls = []\n",
+    "    factor = 100\n",
+    "    for u in users:\n",
+    "        tweets = u['tweets'] # a list of dicts\n",
+    "        texts = [t['full_text'] for t in tweets]\n",
+    "#         avg_len = sum(map(len, texts))/len(texts)\n",
+    "#         tweets_avg_len.append(int(avg_len))\n",
+    "        count_mention = 0\n",
+    "        count_url = 0\n",
+    "        for s in texts:\n",
+    "            if 'http' in s:\n",
+    "                count_url+=1\n",
+    "            if '@' in s:\n",
+    "                count_mention+=1\n",
+    "        tweets_avg_urls.append(100 * count_url / len(texts))\n",
+    "        tweets_avg_mentions.append(100 * count_mention / len(texts))\n",
+    "#     df['tweets_avg_len'] = tweets_avg_len\n",
+    "    df['tweets_avg_urls'] = tweets_avg_urls\n",
+    "    df['tweets_avg_mentions'] = tweets_avg_mentions\n",
+    "    return df\n",
+    "# df = load_data('~/Dropbox/elevate/harassment/training_data/data.csv.gz')\n",
+    "df = load_data('/Users/lcj/small')\n",
+    "df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 94,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "screen_name             object\n",
+       "tweets                  object\n",
+       "listed_count             int64\n",
+       "label                   object\n",
+       "tweets_avg_urls        float64\n",
+       "tweets_avg_mentions    float64\n",
+       "dtype: object"
+      ]
+     },
+     "execution_count": 94,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# what is the distribution over class labels?\n",
+    "df.label.value_counts()\n",
+    "df.dtypes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 95,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def make_features(df):\n",
+    "    vec = DictVectorizer()\n",
+    "    feature_dicts = []\n",
+    "    labels_to_track = ['tweets_avg_urls', 'tweets_avg_mentions','listed_count']\n",
+    "    for i, row in df.iterrows():\n",
+    "        features = {}\n",
+    "        features['tweets_avg_urls'] = row['tweets_avg_urls']\n",
+    "        features['tweets_avg_mentions'] = row['tweets_avg_mentions']\n",
+    "        features['listed_count'] = row['listed_count']\n",
+    "        feature_dicts.append(features)\n",
+    "    X = vec.fit_transform(feature_dicts)\n",
+    "#     print(X)\n",
+    "    return X, vec\n",
+    "\n",
+    "X, vec = make_features(df)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 96,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(200, 3)"
+      ]
+     },
+     "execution_count": 96,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# what are dimensions of the feature matrix?\n",
+    "X.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'tweets_avg_urls': 2, 'tweets_avg_mentions': 1, 'listed_count': 0}"
+      ]
+     },
+     "execution_count": 97,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# what are the feature names?\n",
+    "# vocabulary_ is a dict from feature name to column index\n",
+    "vec.vocabulary_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "     tweets_avg_urls\t9149\n",
+      " tweets_avg_mentions\t7028\n",
+      "        listed_count\t147695\n"
+     ]
+    }
+   ],
+   "source": [
+    "# how often does each word occur?\n",
+    "for word, idx in vec.vocabulary_.items():\n",
+    "    print('%20s\\t%d' % (word, X[:,idx].sum()))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 99,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['listed_count', 'tweets_avg_mentions', 'tweets_avg_urls']"
+      ]
+     },
+     "execution_count": 99,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# can also get a simple list of feature names:\n",
+    "vec.get_feature_names()\n",
+    "\n",
+    "# e.g., first column is 'hate', second is 'love', etc."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 100,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Counter({'bot': 100, 'human': 100})"
+      ]
+     },
+     "execution_count": 100,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# we'll first store the classes separately in a numpy array\n",
+    "y = np.array(df.label)\n",
+    "Counter(y)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 101,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,\n",
+       "       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,\n",
+       "       34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,\n",
+       "       51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,\n",
+       "       68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84,\n",
+       "       85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99])"
+      ]
+     },
+     "execution_count": 101,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# to find the row indices with hostile label\n",
+    "np.where(y=='bot')[0]\n",
+    "# np.where(y=='human')[0]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 102,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# store the class names\n",
+    "class_names = set(df.label)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 103,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "     tweets_avg_urls\t               human\t5491\n",
+      "     tweets_avg_urls\t                 bot\t3657\n",
+      " tweets_avg_mentions\t               human\t6123\n",
+      " tweets_avg_mentions\t                 bot\t905\n",
+      "        listed_count\t               human\t145344\n",
+      "        listed_count\t                 bot\t2351\n"
+     ]
+    }
+   ],
+   "source": [
+    "# how often does each word appear in each class?\n",
+    "for word, idx in vec.vocabulary_.items():\n",
+    "    for class_name in class_names:\n",
+    "        class_idx = np.where(y==class_name)[0]\n",
+    "        print('%20s\\t%20s\\t%d' % (word, class_name, X[class_idx, idx].sum()))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 119,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925]\n",
+      "mean=0.93 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925, 0.95]\n",
+      "mean=0.94 std=0.01\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925, 0.95, 0.825]\n",
+      "mean=0.90 std=0.05\n",
+      "accuracy over all cross-validation folds: [0.925, 0.95, 0.825, 0.775]\n",
+      "mean=0.87 std=0.07\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925, 0.95, 0.825, 0.775, 0.9]\n",
+      "mean=0.88 std=0.07\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.85]\n",
+      "mean=0.85 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.85, 0.9]\n",
+      "mean=0.88 std=0.03\n",
+      "accuracy over all cross-validation folds: [0.85, 0.9, 0.8]\n",
+      "mean=0.85 std=0.04\n",
+      "accuracy over all cross-validation folds: [0.85, 0.9, 0.8, 0.675]\n",
+      "mean=0.81 std=0.08\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.85, 0.9, 0.8, 0.675, 0.95]\n",
+      "mean=0.83 std=0.09\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.85]\n",
+      "mean=0.91 std=0.05\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.85, 1.0]\n",
+      "mean=0.93 std=0.06\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.85, 1.0, 0.775]\n",
+      "mean=0.90 std=0.08\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.95]\n",
+      "mean=0.96 std=0.01\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.95, 0.825]\n",
+      "mean=0.92 std=0.07\n",
+      "accuracy over all cross-validation folds: [0.975, 0.95, 0.825, 0.575]\n",
+      "mean=0.83 std=0.16\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.95, 0.825, 0.575, 0.95]\n",
+      "mean=0.86 std=0.15\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.975, 0.7]\n",
+      "mean=0.84 std=0.14\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.7, 0.775]\n",
+      "mean=0.82 std=0.12\n",
+      "accuracy over all cross-validation folds: [0.975, 0.7, 0.775, 0.775]\n",
+      "mean=0.81 std=0.10\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.7, 0.775, 0.775, 0.95]\n",
+      "mean=0.83 std=0.11\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.975, 0.925]\n",
+      "mean=0.95 std=0.02\n",
+      "accuracy over all cross-validation folds: [0.975, 0.925, 0.825]\n",
+      "mean=0.91 std=0.06\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.925, 0.825, 1.0]\n",
+      "mean=0.93 std=0.07\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.925, 0.825, 1.0, 0.925]\n",
+      "mean=0.93 std=0.06\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.95, 0.95]\n",
+      "mean=0.95 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.95, 0.95, 0.85]\n",
+      "mean=0.92 std=0.05\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.95, 0.95, 0.85, 1.0]\n",
+      "mean=0.94 std=0.05\n",
+      "accuracy over all cross-validation folds: [0.95, 0.95, 0.85, 1.0, 0.725]\n",
+      "mean=0.89 std=0.10\n",
+      "accuracy over all cross-validation folds: [0.875]\n",
+      "mean=0.88 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.875, 0.95]\n",
+      "mean=0.91 std=0.04\n",
+      "accuracy over all cross-validation folds: [0.875, 0.95, 0.825]\n",
+      "mean=0.88 std=0.05\n",
+      "accuracy over all cross-validation folds: [0.875, 0.95, 0.825, 0.625]\n",
+      "mean=0.82 std=0.12\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.875, 0.95, 0.825, 0.625, 0.9]\n",
+      "mean=0.83 std=0.11\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.775]\n",
+      "mean=0.88 std=0.08\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.775, 0.975]\n",
+      "mean=0.91 std=0.08\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.775, 0.975, 0.925]\n",
+      "mean=0.91 std=0.07\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925]\n",
+      "mean=0.93 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.925, 0.925]\n",
+      "mean=0.93 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.925, 0.925, 0.85]\n",
+      "mean=0.90 std=0.04\n",
+      "accuracy over all cross-validation folds: [0.925, 0.925, 0.85, 1.0]\n",
+      "mean=0.93 std=0.05\n",
+      "accuracy over all cross-validation folds: [0.925, 0.925, 0.85, 1.0, 0.7]\n",
+      "mean=0.88 std=0.10\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n",
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.575]\n",
+      "mean=0.82 std=0.17\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.575, 1.0]\n",
+      "mean=0.86 std=0.17\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.575, 1.0, 0.95]\n",
+      "mean=0.88 std=0.16\n",
+      "accuracy over all cross-validation folds: [0.675]\n",
+      "mean=0.68 std=0.00\n",
+      "accuracy over all cross-validation folds: [0.675, 0.85]\n",
+      "mean=0.76 std=0.09\n",
+      "accuracy over all cross-validation folds: [0.675, 0.85, 0.625]\n",
+      "mean=0.72 std=0.10\n",
+      "accuracy over all cross-validation folds: [0.675, 0.85, 0.625, 0.95]\n",
+      "mean=0.77 std=0.13\n",
+      "accuracy over all cross-validation folds: [0.675, 0.85, 0.625, 0.95, 0.8]\n",
+      "mean=0.78 std=0.12\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/lcj/anaconda3/lib/python3.7/site-packages/sklearn/neural_network/multilayer_perceptron.py:562: ConvergenceWarning: Stochastic Optimizer: Maximum iterations (200) reached and the optimization hasn't converged yet.\n",
+      "  % self.max_iter, ConvergenceWarning)\n"
+     ]
+    }
+   ],
+   "source": [
+    "a= [10,50,100,200]\n",
+    "b = [ 0.001, 0.0001, 0.00001]\n",
+    "for hidden_layer_sizes in a:\n",
+    "    for alpha in b:\n",
+    "        clf = MLPClassifier(hidden_layer_sizes = (50,) , activation='relu', solver='adam', alpha=0.0001)\n",
+    "        clf.fit(X, y)\n",
+    "        kf = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "        accuracies = []\n",
+    "        for train, test in kf.split(X):\n",
+    "            clf.fit(X[train], y[train])\n",
+    "            pred = clf.predict(X[test])\n",
+    "            accuracies.append(accuracy_score(y[test], pred))\n",
+    "            clf.coefs_\n",
+    "            print('accuracy over all cross-validation folds: %s' % str(accuracies))\n",
+    "            print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 120,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0.47117383 0.31309028 0.2157359 ]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.46093527 0.34502816 0.19403657]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.925]\n",
+      "mean=0.94 std=0.01\n",
+      "[0.45467624 0.34110692 0.20421684]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.925, 0.825]\n",
+      "mean=0.90 std=0.05\n",
+      "[0.4478776  0.33363814 0.21848426]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.925, 0.825, 0.975]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.40953821 0.33740839 0.2530534 ]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.925, 0.825, 0.975, 0.925]\n",
+      "mean=0.92 std=0.05\n",
+      "[0.42626602 0.32485661 0.24887737]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.40642281 0.36330754 0.23026966]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9]\n",
+      "mean=0.93 std=0.02\n",
+      "[0.46532309 0.31380101 0.2208759 ]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.85]\n",
+      "mean=0.90 std=0.04\n",
+      "[0.40455096 0.35178289 0.24366615]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.85, 0.975]\n",
+      "mean=0.92 std=0.05\n",
+      "[0.42160726 0.35915589 0.21923685]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.85, 0.975, 0.925]\n",
+      "mean=0.92 std=0.04\n",
+      "[0.44605341 0.31951337 0.23443322]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.4392915  0.35748887 0.20321963]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9]\n",
+      "mean=0.93 std=0.02\n",
+      "[0.46540066 0.3066039  0.22799544]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825]\n",
+      "mean=0.89 std=0.05\n",
+      "[0.42438403 0.33433653 0.24127945]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975]\n",
+      "mean=0.91 std=0.06\n",
+      "[0.42536629 0.35098782 0.22364589]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975, 0.925]\n",
+      "mean=0.92 std=0.05\n",
+      "[0.42296201 0.27650703 0.30053096]\n",
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "[0.42879052 0.43036868 0.1408408 ]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n",
+      "[0.45932793 0.30140048 0.23927159]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825]\n",
+      "mean=0.90 std=0.06\n",
+      "[0.41362218 0.387394   0.19898382]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 0.975]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.3657229  0.37049389 0.26378322]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 0.975, 0.95]\n",
+      "mean=0.93 std=0.06\n",
+      "[0.44271922 0.32650071 0.23078007]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.39187134 0.37774347 0.23038518]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9]\n",
+      "mean=0.93 std=0.02\n",
+      "[0.49004841 0.28035542 0.22959617]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825]\n",
+      "mean=0.89 std=0.05\n",
+      "[0.41703373 0.36088423 0.22208204]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975]\n",
+      "mean=0.91 std=0.06\n",
+      "[0.40426789 0.38968516 0.20604695]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975, 0.95]\n",
+      "mean=0.92 std=0.05\n",
+      "[0.43385713 0.34613282 0.22001005]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.41068311 0.36910048 0.22021642]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9]\n",
+      "mean=0.93 std=0.02\n",
+      "[0.43541338 0.36139437 0.20319225]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825]\n",
+      "mean=0.89 std=0.05\n",
+      "[0.44242228 0.35558248 0.20199525]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975]\n",
+      "mean=0.91 std=0.06\n",
+      "[0.44467592 0.34319236 0.21213172]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 0.975, 0.975]\n",
+      "mean=0.93 std=0.06\n",
+      "[0.42047617 0.33832913 0.2411947 ]\n",
+      "accuracy over all cross-validation folds: [0.95]\n",
+      "mean=0.95 std=0.00\n",
+      "[0.40339831 0.36399557 0.23260612]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9]\n",
+      "mean=0.93 std=0.02\n",
+      "[0.46821237 0.32610837 0.20567926]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825]\n",
+      "mean=0.89 std=0.05\n",
+      "[0.38599062 0.3863575  0.22765188]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 1.0]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.36380398 0.41600666 0.22018936]\n",
+      "accuracy over all cross-validation folds: [0.95, 0.9, 0.825, 1.0, 0.9]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.44662609 0.33745023 0.21592368]\n",
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "[0.37291249 0.39373642 0.23335109]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n",
+      "[0.43620063 0.34936788 0.2144315 ]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825]\n",
+      "mean=0.90 std=0.06\n",
+      "[0.48378482 0.32769499 0.18852019]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 1.0]\n",
+      "mean=0.93 std=0.07\n",
+      "[0.37212399 0.42152009 0.20635592]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 1.0, 0.875]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.42844365 0.34575726 0.22579909]\n",
+      "accuracy over all cross-validation folds: [0.975]\n",
+      "mean=0.97 std=0.00\n",
+      "[0.38971254 0.36540313 0.24488434]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9]\n",
+      "mean=0.94 std=0.04\n",
+      "[0.40941236 0.37162889 0.21895875]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825]\n",
+      "mean=0.90 std=0.06\n",
+      "[0.39597149 0.37990158 0.22412693]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 0.975]\n",
+      "mean=0.92 std=0.06\n",
+      "[0.41480129 0.3767822  0.20841652]\n",
+      "accuracy over all cross-validation folds: [0.975, 0.9, 0.825, 0.975, 0.925]\n",
+      "mean=0.92 std=0.06\n"
+     ]
+    }
+   ],
+   "source": [
+    "c= [1, 3, 5]\n",
+    "d = [100, 200, 300]\n",
+    "for min_samples_leaf in c:\n",
+    "    for n_estimators in d:\n",
+    "        rand = RandomForestClassifier(n_estimators=n_estimators, min_samples_leaf= min_samples_leaf)\n",
+    "        rand.fit(X, y)\n",
+    "        kf = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "        accuracies = []\n",
+    "        for train, test in kf.split(X):\n",
+    "            rand.fit(X[train], y[train])\n",
+    "            pred = rand.predict(X[test])\n",
+    "            accuracies.append(accuracy_score(y[test], pred))\n",
+    "            print(rand.feature_importances_)\n",
+    "            print('accuracy over all cross-validation folds: %s' % str(accuracies))\n",
+    "            print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
