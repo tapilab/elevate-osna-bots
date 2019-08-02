@@ -40,7 +40,7 @@ def index():
 
 def get_prediction(tweets):
     feature_dicts = []
-    features = get_tweets_features(tweets)
+    features = get_tweets_features(tweets, tweets, 200)
     feature_dicts.append(features)
     X_features = dict_vec.transform(feature_dicts)
     X_words = count_vec.transform([str(tweets)])
@@ -51,8 +51,8 @@ def get_prediction(tweets):
 def print_top_features(X_all):
     coef = [-clf.coef_[0], clf.coef_[0]]
     features = dict_vec.get_feature_names() + count_vec.get_feature_names()
-    # why was the first example labeled hostile?
-    for i in np.argsort(coef[0][X_all[0].nonzero()[1]])[-1:-4:-1]:
+    # why was the first example labeled bot/human?
+    for i in np.argsort(coef[0][X_all[0].nonzero()[1]])[-1:-6:-1]:
         idx = X_all[0].nonzero()[1][i]
         print(features[idx])
         print(coef[0][idx])
