@@ -19,6 +19,7 @@ from sklearn.metrics import accuracy_score, classification_report
 from scipy.sparse import csr_matrix, hstack  # "horizontal stack"
 from . import credentials_path, clf_path
 
+from sklearn.neural_network import MLPClassifier
 
 @click.group()
 def main(args=None):
@@ -138,7 +139,7 @@ def train(directory):
 
     # (2) Create classifier and vectorizer.
     X, dict_vec = make_features(df)
-    count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
+    count_vec = CountVectorizer(min_df=0.01, max_df=0.8, ngram_range=(3, 3))
 
     X_words = count_vec.fit_transform(df.tweets_texts)
     optimal_X_all = hstack([X, X_words]).tocsr()
@@ -150,18 +151,22 @@ def train(directory):
     # (classification_report)
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     accuracies = []
+    truths = []
+    predictions = []
     for train, test in kf.split(optimal_X_all):
         clf.fit(optimal_X_all[train], y[train])
         pred = clf.predict(optimal_X_all[test])
         accuracies.append(accuracy_score(y[test], pred))
+        truths.extend(y[test])
+        predictions.extend(pred)
     print('accuracy over all cross-validation folds: %s' % str(accuracies))
     print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
-    y_pred = clf.predict(optimal_X_all)
-    print("classification_report: \n", classification_report(y, y_pred))
+    print("classification_report: \n", classification_report(truths, predictions))
 
     # (4) Finally, train on ALL data one final time and
     # train...
     # save the classifier
+    clf.fit(optimal_X_all, y)
     print_top_features(dict_vec, count_vec, clf)
     pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
 
@@ -177,9 +182,13 @@ def read_data(directory):
             with gzip.open(p, 'r') as file:
                 for line in file:
                     if f == folder[0]:
-                        bots.append(json.loads(line))
+                        js = json.loads(line)
+                        if 'tweets' in js:
+                            bots.append(js)
                     elif f == folder[1]:
-                        humans.append(json.loads(line))
+                        js = json.loads(line)
+                        if 'tweets' in js:
+                            humans.append(js)
     df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count']]
     df_bots['label'] = 'bot'
     df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count']]
@@ -187,9 +196,6 @@ def read_data(directory):
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
     users = bots + humans
-    # tweets_avg_mentions = []
-    # tweets_avg_urls = []
-    # factor = 100
     tweets_texts = []
     for u in users:
         tweets = u['tweets']  # a list of dicts
