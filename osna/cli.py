@@ -16,7 +16,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, classification_report
-from scipy.sparse import csr_matrix, hstack  # "horizontal stack"
+from scipy.sparse import hstack  # "horizontal stack"
 from . import credentials_path, clf_path
 
 
@@ -138,6 +138,7 @@ def train(directory):
 
     # (2) Create classifier and vectorizer.
     X, dict_vec = make_features(df)
+    print(dict_vec.get_feature_names())
     count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
 
     X_words = count_vec.fit_transform(df.tweets_texts)
@@ -150,18 +151,22 @@ def train(directory):
     # (classification_report)
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     accuracies = []
+    truths = []
+    predictions = []
     for train, test in kf.split(optimal_X_all):
         clf.fit(optimal_X_all[train], y[train])
         pred = clf.predict(optimal_X_all[test])
         accuracies.append(accuracy_score(y[test], pred))
+        truths.extend(y[test])
+        predictions.extend(pred)
     print('accuracy over all cross-validation folds: %s' % str(accuracies))
     print('mean=%.2f std=%.2f' % (np.mean(accuracies), np.std(accuracies)))
-    y_pred = clf.predict(optimal_X_all)
-    print("classification_report: \n", classification_report(y, y_pred))
+    print("classification_report: \n", classification_report(truths, predictions))
 
     # (4) Finally, train on ALL data one final time and
     # train...
     # save the classifier
+    clf.fit(optimal_X_all, y)
     print_top_features(dict_vec, count_vec, clf)
     pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
 
@@ -177,9 +182,13 @@ def read_data(directory):
             with gzip.open(p, 'r') as file:
                 for line in file:
                     if f == folder[0]:
-                        bots.append(json.loads(line))
+                        js = json.loads(line)
+                        if 'tweets' in js:
+                            bots.append(js)
                     elif f == folder[1]:
-                        humans.append(json.loads(line))
+                        js = json.loads(line)
+                        if 'tweets' in js:
+                            humans.append(js)
     df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count']]
     df_bots['label'] = 'bot'
     df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count']]
@@ -187,15 +196,15 @@ def read_data(directory):
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
     users = bots + humans
-    # tweets_avg_mentions = []
-    # tweets_avg_urls = []
-    # factor = 100
     tweets_texts = []
+    num_of_tweets = []
     for u in users:
         tweets = u['tweets']  # a list of dicts
+        num_of_tweets.append(len(tweets))
         texts = [t['full_text'] for t in tweets]
         tweets_texts.append(str(texts).strip('[]'))
     df['tweets_texts'] = tweets_texts
+    df['num_tweets'] = num_of_tweets
     return df
 
 
@@ -206,14 +215,13 @@ def make_features(df):
     for i, row in df.iterrows():
         tweets = row['tweets']
         texts = [t['full_text'] for t in tweets]
-        features = get_tweets_features(texts)
+        features = get_tweets_features(texts, row.tweets_texts, row.num_tweets)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
     return X, vec
-    # pass
 
 
-def get_tweets_features(texts):
+def get_tweets_features(texts, tweets_texts, num_of_tweets):
     count_mention = 0
     count_url = 0
     factor = 100
@@ -229,6 +237,20 @@ def get_tweets_features(texts):
     else:
         features['tweets_avg_urls'] = factor * count_url / len(texts)
         features['tweets_avg_mentions'] = factor * count_mention / len(texts)
+        # add the tri_gram feature
+    tri_count_vec = CountVectorizer(min_df=1, max_df=1.0, ngram_range=(3, 3))
+    user_words = tri_count_vec.fit_transform(tweets_texts)
+    freqs = zip(tri_count_vec.get_feature_names(), user_words.sum(axis=0).tolist()[0])
+    # sort from largest to smallest
+    f_list = sorted(freqs, key=lambda x: -x[1])
+    top_element = f_list[0]
+    top_word = top_element[0]
+    top_freq = top_element[1]
+    if num_of_tweets != 0:
+        frequency = top_freq / num_of_tweets * 100
+    else:
+        frequency = 0
+    features['tri_gram_most_common'] = frequency
     return features
 
 
