@@ -215,7 +215,7 @@ def make_features(df):
     for i, row in df.iterrows():
         tweets = row['tweets']
         texts = [t['full_text'] for t in tweets]
-        features = get_tweets_features(texts, row.tweets_texts, row.num_tweets)
+        features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
     return X, vec
