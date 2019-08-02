@@ -26,8 +26,11 @@ def index():
     if form.validate_on_submit():
         input_field = form.input_field.data
         print(input_field)
-        tweets = [t['full_text'] for t in twapi._get_tweets('screen_name', input_field, limit=200)]
-        X_all, prediction = get_prediction(tweets)
+        tweet_objects = [t for t in twapi._get_tweets('screen_name', input_field)]
+        tweets = [t['full_text'] for t in tweet_objects]
+        if len(tweet_objects)==0:
+            return render_template('myform.html', title='', form=form, prediction='?', confidence='?')
+        X_all, prediction = get_prediction(tweet_objects)
         print('for user' + input_field + 'prediction = ' + prediction)
         # calculate confidence
         probas = clf.predict_proba(X_all)
@@ -38,9 +41,14 @@ def index():
         return render_template('myform.html', title='', form=form, tweets=tweets, prediction=prediction, confidence=confidence)
     return render_template('myform.html', title='', form=form, prediction='?', confidence='?')
 
-def get_prediction(tweets):
+def get_prediction(tweet_objects):
+    tweets = [t['full_text'] for t in tweet_objects]
+    user = tweet_objects[0]['user']
+    followers_count = user['followers_count']
+    # listed_count = user['listed_count']
+    # friends_count = user['friends_count']
     feature_dicts = []
-    features = get_tweets_features(tweets, tweets, 200)
+    features = get_tweets_features(tweets, tweets, len(tweet_objects), followers_count)
     feature_dicts.append(features)
     X_features = dict_vec.transform(feature_dicts)
     X_words = count_vec.transform([str(tweets)])
@@ -52,7 +60,7 @@ def print_top_features(X_all):
     coef = [-clf.coef_[0], clf.coef_[0]]
     features = dict_vec.get_feature_names() + count_vec.get_feature_names()
     # why was the first example labeled bot/human?
-    for i in np.argsort(coef[0][X_all[0].nonzero()[1]])[-1:-6:-1]:
+    for i in np.argsort(coef[0][X_all[0].nonzero()[1]])[-1:-11:-1]:
         idx = X_all[0].nonzero()[1][i]
         print(features[idx])
         print(coef[0][idx])

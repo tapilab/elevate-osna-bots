@@ -143,7 +143,7 @@ def train(directory):
 
     X_words = count_vec.fit_transform(df.tweets_texts)
     optimal_X_all = hstack([X, X_words]).tocsr()
-    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=1000, C=1, penalty='l2')
+    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=3000, C=1, penalty='l2')
     y = np.array(df.label)
     clf.fit(optimal_X_all, y)
 
@@ -189,9 +189,11 @@ def read_data(directory):
                         js = json.loads(line)
                         if 'tweets' in js:
                             humans.append(js)
-    df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count']]
+    df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count',
+                                  'followers_count', 'friends_count']]
     df_bots['label'] = 'bot'
-    df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count']]
+    df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count',
+                                      'followers_count', 'friends_count']]
     df_humans['label'] = 'human'
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
@@ -215,13 +217,13 @@ def make_features(df):
     for i, row in df.iterrows():
         tweets = row['tweets']
         texts = [t['full_text'] for t in tweets]
-        features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets)
+        features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets, row.followers_count)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
     return X, vec
 
 
-def get_tweets_features(texts, tweets_texts, num_of_tweets):
+def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count):
     count_mention = 0
     count_url = 0
     factor = 100
@@ -251,6 +253,9 @@ def get_tweets_features(texts, tweets_texts, num_of_tweets):
     else:
         frequency = 0
     features['tri_gram_most_common'] = frequency
+    # features['listed_count'] = listed_count
+    features['followers_count'] = followers_count
+    # features['friends_count'] = friends_count
     return features
 
 
