@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <b>A sample form.</b>
+{#    <b>A sample form.</b>#}
+
     <form action="" method="post" novalidate>
-        <p>
-            {{ form.input_field.label }} {{ form.input_field(size=32) }}
-        </p>
-        {{ form.submit() }}
+{#        {{ form.input_field }}#}
+        <div class="form-group">
+            <label for="input" class="lead font-weight-bond col-sm-2 col-form-label"> {{ form.input_field.label }} </label>
+            {{ form.input_field(size=32) }}
+        </div>
+        <button type="submit" class="btn btn-outline-dark"> Submit</button>
+
     </form>
 {% endblock %}

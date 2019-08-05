@@ -1,37 +1,64 @@
 <html>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="../static/font-awesome-4.7.0/css/font-awesome.css">
+    <link rel="stylesheet" href="../static/page.css">
     <head>
       {% if title %}
       <title>{{ title }} - osna</title>
       {% else %}
       <title>osna</title>
       {% endif %}
-      <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
     </head>
     <body>
 
+        <div class="jumbotron text-center blue-grey lighten-5">
 
-        <div>osna project: Deyuan Chen, Chenguang Tang, Chunjiang Li</div>
+          <!-- Title -->
+          <h2 class="display-4">Detect Bots for Twitter Accounts</h2>
 
-        <hr>
-        {% if form.errors %}
-        {{ form.errors }}
-        {% endif %}
-        
-        {% block content %}{% endblock %}
+          <!-- Subtitle -->
+          <p class="lead my-4 font-weight-light">
+              Group Members: <br>
+              Deyuan Chen, SUSTech <br>
+              Chenguang Tang, BUPT <br>
+              Chunjiang Li, BUPT
+          </p>
 
-{#        {% with messages = get_flashed_messages() %}#}
-{#        {% with messages = value %}#}
-{#        {% if messages %}#}
-        <p style="color: blue">
-           Prediction = {{ prediction }}, Confidence = {{ confidence }}
-        </p>
-        <ul>
-            {% for message in tweets %}
-            <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
-{#        {% endif %}#}
-{#        {% endwith %}#}
-        <br>
+          <p class="my-4 card-text">
+              This project is for the <a href="https://admissions.iit.edu/elevate">Elevate</a> course SCI 498 - 410: Online Social Network Analysis, <br> taught by <a href="http://cs.iit.edu/~culotta/">Dr. Aron Culotta</a> at the Illinois Institute of Technology.
+          </p>
+
+          <a class="my-4" href="https://github.com/tapilab/elevate-osna-bots"target="_blank"><i class="fa fa-github fa-2x grey-text icon-cog"></i></a>
+
+        </div>
+
+        <div class="container text-center">
+
+            {% if form.errors %}
+            {{ form.errors }}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+            <p class="lead my-4" style="color: blue">
+               Prediction = {{ prediction }}  <br> Confidence = {{ confidence }}
+            </p>
+
+            <div class="container text-left">
+
+                <div class="card card-body">
+                    <h5 class="card-title">Tweets of this user: </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for message in tweets %}
+                        <li class="list-group-item">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+            </div>
+
+            <br>
+        </div>
     </body>
 </html>

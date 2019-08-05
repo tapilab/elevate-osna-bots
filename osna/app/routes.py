@@ -26,7 +26,7 @@ def index():
     if form.validate_on_submit():
         input_field = form.input_field.data
         print(input_field)
-        tweet_objects = [t for t in twapi._get_tweets('screen_name', input_field)]
+        tweet_objects = [t for t in twapi._get_tweets('screen_name', input_field, limit=200)]
         tweets = [t['full_text'] for t in tweet_objects]
         if len(tweet_objects)==0:
             return render_template('myform.html', title='', form=form, prediction='?', confidence='?')
@@ -45,10 +45,13 @@ def get_prediction(tweet_objects):
     tweets = [t['full_text'] for t in tweet_objects]
     user = tweet_objects[0]['user']
     followers_count = user['followers_count']
-    # listed_count = user['listed_count']
-    # friends_count = user['friends_count']
+    listed_count = user['listed_count']
+    friends_count = user['friends_count']
+    default_profile_image = int(user['default_profile_image'])
+    default_profile = int(user['default_profile'])
+
     feature_dicts = []
-    features = get_tweets_features(tweets, tweets, len(tweet_objects), followers_count)
+    features = get_tweets_features(tweets, tweets, len(tweet_objects), followers_count, listed_count, friends_count, default_profile_image, default_profile)
     feature_dicts.append(features)
     X_features = dict_vec.transform(feature_dicts)
     X_words = count_vec.transform([str(tweets)])

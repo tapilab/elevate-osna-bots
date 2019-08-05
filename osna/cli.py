@@ -136,16 +136,26 @@ def train(directory):
     #
     df = read_data(directory)
 
+    print("start making features...")
     # (2) Create classifier and vectorizer.
     X, dict_vec = make_features(df)
     print(dict_vec.get_feature_names())
-    count_vec = CountVectorizer(min_df=1, max_df=0.8, ngram_range=(3, 3))
+    print("finished making features.")
+
+    min_df = 0.01
+    max_df = 0.5
+    print("min_df=%.2f, max_df=%.2f"%(min_df, max_df))
+    count_vec = CountVectorizer(min_df=min_df, max_df=max_df, ngram_range=(3, 3))
 
     X_words = count_vec.fit_transform(df.tweets_texts)
+    print(X_words.shape)
     optimal_X_all = hstack([X, X_words]).tocsr()
-    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=3000, C=1, penalty='l2')
+    print("finished optimal_X_all.")
+
+    clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000, C=1, penalty='l2')
     y = np.array(df.label)
     clf.fit(optimal_X_all, y)
+    print("finished clf fit.")
 
     # (3) do cross-validation and print out validation metrics
     # (classification_report)
@@ -190,10 +200,10 @@ def read_data(directory):
                         if 'tweets' in js:
                             humans.append(js)
     df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count',
-                                  'followers_count', 'friends_count']]
+                                  'followers_count', 'friends_count', 'default_profile_image', 'default_profile']]
     df_bots['label'] = 'bot'
     df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count',
-                                      'followers_count', 'friends_count']]
+                                      'followers_count', 'friends_count', 'default_profile_image', 'default_profile']]
     df_humans['label'] = 'human'
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
@@ -217,17 +227,19 @@ def make_features(df):
     for i, row in df.iterrows():
         tweets = row['tweets']
         texts = [t['full_text'] for t in tweets]
-        features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets, row.followers_count)
+        features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets, row.followers_count, row.listed_count, row.friends_count,
+                                       row.default_profile_image, row.default_profile)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
     return X, vec
 
 
-def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count):
+def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count, listed_count, friends_count, default_profile_image, default_profile):
     count_mention = 0
     count_url = 0
     factor = 100
     features = {}
+
     for s in texts:
         if 'http' in s:
             count_url += 1
@@ -239,34 +251,45 @@ def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count):
     else:
         features['tweets_avg_urls'] = factor * count_url / len(texts)
         features['tweets_avg_mentions'] = factor * count_mention / len(texts)
-        # add the tri_gram feature
+
+    features['followers_count'] = followers_count
+    features['listed_count'] = listed_count
+    features['friends_count'] = friends_count
+    features['default_profile_image'] = int(default_profile_image)
+    features['default_profile'] = int(default_profile)
+
+    # add the tri_gram feature
     tri_count_vec = CountVectorizer(min_df=1, max_df=1.0, ngram_range=(3, 3))
-    user_words = tri_count_vec.fit_transform(tweets_texts)
+    try:
+        user_words = tri_count_vec.fit_transform(tweets_texts)
+    except ValueError:
+        features['tri_gram_most_common'] = 0
+        return features
     freqs = zip(tri_count_vec.get_feature_names(), user_words.sum(axis=0).tolist()[0])
     # sort from largest to smallest
     f_list = sorted(freqs, key=lambda x: -x[1])
     top_element = f_list[0]
     top_word = top_element[0]
     top_freq = top_element[1]
+    # print(top_element)
     if num_of_tweets != 0:
         frequency = top_freq / num_of_tweets * 100
     else:
         frequency = 0
     features['tri_gram_most_common'] = frequency
-    # features['listed_count'] = listed_count
-    features['followers_count'] = followers_count
-    # features['friends_count'] = friends_count
+
     return features
 
 
 def print_top_features(vec, count_vec, clf):
     # sort coefficients by class.
-    features = vec.get_feature_names()[0:3] + count_vec.get_feature_names()
+    features = vec.get_feature_names() + count_vec.get_feature_names()
     coef = [-clf.coef_[0], clf.coef_[0]]
     for ci, class_name in enumerate(clf.classes_):
         print('top 15 features for class %s:' % class_name)
         for fi in coef[ci].argsort()[-1:-16:-1]:  # descending order.
-            print('%20s\t%.2f' % (features[fi], coef[ci][fi]))
+        # for fi in coef[ci].argsort()[-1:-56:-1]:  # descending order.
+            print('%20s\t%.6f' % (features[fi], coef[ci][fi]))
         print()
 
 
