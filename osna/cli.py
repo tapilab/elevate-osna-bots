@@ -16,6 +16,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import scale, StandardScaler
 from scipy.sparse import hstack  # "horizontal stack"
 from . import credentials_path, clf_path
 
@@ -150,12 +151,17 @@ def train(directory):
     X_words = count_vec.fit_transform(df.tweets_texts)
     print(X_words.shape)
     optimal_X_all = hstack([X, X_words]).tocsr()
+    ###scaler = StandardScaler(with_mean=False)  # optionally with_mean=False to save memory (keep matrix sparse)
+    ###optimal_X_all = scaler.fit_transform(optimal_X_all)
+    #optimal_X_all = scaler.fit_transform(optimal_X_all.todense())
+
     print("finished optimal_X_all.")
 
     clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000, C=1, penalty='l2')
     y = np.array(df.label)
-    clf.fit(optimal_X_all, y)
-    print("finished clf fit.")
+    ## no reason to .fit here since you do it after cross validation. -awc
+    # clf.fit(optimal_X_all, y)
+    # print("finished clf fit.")
 
     # (3) do cross-validation and print out validation metrics
     # (classification_report)
