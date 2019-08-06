@@ -44,6 +44,14 @@
             <p class="lead my-4" style="color: blue">
                Prediction = {{ prediction }}  <br> Confidence = {{ confidence }}
             </p>
+            <div class="container text-center">
+                <h5 class="card-title">Top features: </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for f in top_features %}
+                        <li class="list-group-item">{{f[0]}} </li>
+                        {% endfor %}
+                    </ul>
+            </div>
 
             <div class="container text-left">
 

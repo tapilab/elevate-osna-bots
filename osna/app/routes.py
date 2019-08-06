@@ -13,7 +13,7 @@ import sys
 import numpy as np
 
 twapi = Twitter(credentials_path)
-clf, count_vec, dict_vec = pickle.load(open(clf_path, 'rb'))
+clf, count_vec, dict_vec, scaler = pickle.load(open(clf_path, 'rb'))
 print('read clf %s' % str(clf))
 print('read count_vec %s' % str(count_vec))
 print('read dict_vec %s' % str(dict_vec))
@@ -35,11 +35,12 @@ def index():
         # calculate confidence
         probas = clf.predict_proba(X_all)
         print('probas=', probas)
-        confidence = round(probas.max(), 2)
+        confidence = round(probas.max(), 4)
         print('predicted %s with probability %.2f' % (prediction, confidence))
-        print_top_features(X_all)
-        return render_template('myform.html', title='', form=form, tweets=tweets, prediction=prediction, confidence=confidence)
-    return render_template('myform.html', title='', form=form, prediction='?', confidence='?')
+        top_features = print_top_features(X_all)[0:3]
+        print(top_features)
+        return render_template('myform.html', title='', form=form, tweets=tweets, prediction=prediction, confidence=confidence, top_features=top_features)
+    return render_template('myform.html', title='', form=form, prediction='?', confidence='?', top_features='?')
 
 def get_prediction(tweet_objects):
     tweets = [t['full_text'] for t in tweet_objects]
@@ -49,21 +50,28 @@ def get_prediction(tweet_objects):
     friends_count = user['friends_count']
     default_profile_image = int(user['default_profile_image'])
     default_profile = int(user['default_profile'])
+    verified = int(user['verified'])
+    statuses_count = user['statuses_count']
 
     feature_dicts = []
-    features = get_tweets_features(tweets, tweets, len(tweet_objects), followers_count, listed_count, friends_count, default_profile_image, default_profile)
+    features = get_tweets_features(tweets, tweets, len(tweet_objects), followers_count, listed_count, friends_count,
+                                   default_profile_image, default_profile, statuses_count, verified)
     feature_dicts.append(features)
     X_features = dict_vec.transform(feature_dicts)
     X_words = count_vec.transform([str(tweets)])
     X_all = hstack([X_features, X_words]).tocsr()
-    prediction = clf.predict(X_all)[0]
+    scaled_X_all = scaler.transform(X_all)
+    prediction = clf.predict(scaled_X_all)[0]
     return X_all, prediction
 
 def print_top_features(X_all):
     coef = [-clf.coef_[0], clf.coef_[0]]
     features = dict_vec.get_feature_names() + count_vec.get_feature_names()
     # why was the first example labeled bot/human?
+    top_features = []
     for i in np.argsort(coef[0][X_all[0].nonzero()[1]])[-1:-11:-1]:
         idx = X_all[0].nonzero()[1][i]
         print(features[idx])
         print(coef[0][idx])
+        top_features.append((features[idx],coef[0][idx]))
+    return top_features
