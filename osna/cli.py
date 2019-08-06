@@ -20,7 +20,6 @@ from sklearn.preprocessing import scale, StandardScaler
 from scipy.sparse import hstack  # "horizontal stack"
 from . import credentials_path, clf_path
 
-
 @click.group()
 def main(args=None):
     """Console script for osna."""
@@ -143,21 +142,23 @@ def train(directory):
     print(dict_vec.get_feature_names())
     print("finished making features.")
 
-    min_df = 0.01
-    max_df = 0.5
+    min_df = 0.05
+    max_df = 0.50
     print("min_df=%.2f, max_df=%.2f"%(min_df, max_df))
     count_vec = CountVectorizer(min_df=min_df, max_df=max_df, ngram_range=(3, 3))
 
     X_words = count_vec.fit_transform(df.tweets_texts)
     print(X_words.shape)
     optimal_X_all = hstack([X, X_words]).tocsr()
-    ###scaler = StandardScaler(with_mean=False)  # optionally with_mean=False to save memory (keep matrix sparse)
-    ###optimal_X_all = scaler.fit_transform(optimal_X_all)
-    #optimal_X_all = scaler.fit_transform(optimal_X_all.todense())
+    scaler = StandardScaler(with_mean=False)  # optionally with_mean=False to save memory (keep matrix sparse)
+    optimal_X_all = scaler.fit_transform(optimal_X_all)
+    # optimal_X_all = scaler.fit_transform(optimal_X_all.todense())
 
     print("finished optimal_X_all.")
 
     clf = LogisticRegression(solver='lbfgs', multi_class='auto', max_iter=10000, C=1, penalty='l2')
+    # clf = MLPClassifier(hidden_layer_sizes=100, activation='relu', solver='adam', alpha=0.001, max_iter=10000)
+    # rand = RandomForestClassifier(n_estimators=300, min_samples_leaf=1)
     y = np.array(df.label)
     ## no reason to .fit here since you do it after cross validation. -awc
     # clf.fit(optimal_X_all, y)
@@ -184,7 +185,7 @@ def train(directory):
     # save the classifier
     clf.fit(optimal_X_all, y)
     print_top_features(dict_vec, count_vec, clf)
-    pickle.dump((clf, count_vec, dict_vec), open(clf_path, 'wb'))
+    pickle.dump((clf, count_vec, dict_vec, scaler), open(clf_path, 'wb'))
 
 
 def read_data(directory):
@@ -206,10 +207,12 @@ def read_data(directory):
                         if 'tweets' in js:
                             humans.append(js)
     df_bots = pd.DataFrame(bots)[['screen_name', 'tweets', 'listed_count',
-                                  'followers_count', 'friends_count', 'default_profile_image', 'default_profile']]
+                                  'followers_count', 'friends_count', 'default_profile_image',
+                                  'default_profile', 'statuses_count', 'verified']]
     df_bots['label'] = 'bot'
     df_humans = pd.DataFrame(humans)[['screen_name', 'tweets', 'listed_count',
-                                      'followers_count', 'friends_count', 'default_profile_image', 'default_profile']]
+                                      'followers_count', 'friends_count', 'default_profile_image',
+                                      'default_profile', 'statuses_count', 'verified']]
     df_humans['label'] = 'human'
     frames = [df_bots, df_humans]
     df = pd.concat(frames)
@@ -234,13 +237,14 @@ def make_features(df):
         tweets = row['tweets']
         texts = [t['full_text'] for t in tweets]
         features = get_tweets_features(texts, [row.tweets_texts], row.num_tweets, row.followers_count, row.listed_count, row.friends_count,
-                                       row.default_profile_image, row.default_profile)
+                                       row.default_profile_image, row.default_profile, row.statuses_count, row.verified)
         feature_dicts.append(features)
     X = vec.fit_transform(feature_dicts)
     return X, vec
 
 
-def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count, listed_count, friends_count, default_profile_image, default_profile):
+def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count, listed_count, friends_count,
+                        default_profile_image, default_profile, statuses_count, verified):
     count_mention = 0
     count_url = 0
     factor = 100
@@ -263,9 +267,11 @@ def get_tweets_features(texts, tweets_texts, num_of_tweets, followers_count, lis
     features['friends_count'] = friends_count
     features['default_profile_image'] = int(default_profile_image)
     features['default_profile'] = int(default_profile)
+    features['verified'] = int(verified)
+    features['statuses_count'] = statuses_count
 
     # add the tri_gram feature
-    tri_count_vec = CountVectorizer(min_df=1, max_df=1.0, ngram_range=(3, 3))
+    tri_count_vec = CountVectorizer(min_df=1, max_df=1.0, ngram_range=(2, 3))
     try:
         user_words = tri_count_vec.fit_transform(tweets_texts)
     except ValueError:
