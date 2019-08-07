@@ -3,9 +3,7 @@ layout: slide
 title: "What is a Twitter Bot?"
 ---
 
-Twitter bots are automated user accounts that interact with Twitter using an application programming interface (API).
-
-Twitter bots can automatically perform actions such as tweeting, re-tweeting, or direct messaging other accounts. 
+Twitter bots are automated user accounts that interact with Twitter using an application programming interface (API). They can automatically perform actions such as tweeting, re-tweeting, or direct messaging other accounts. 
 
 Many are used to perform important functions, such as tweet about earthquakes in real-time and serve as part of a warning system.
 

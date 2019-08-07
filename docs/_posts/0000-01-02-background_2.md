@@ -3,8 +3,6 @@ layout: slide
 title: "How can we detect a bot?"
 ---
 
-<img src="{{ site.baseurl }}/assets/img/diagram.png">
-
 We list some typical characteristics of bots on Twitter:
 
 * The account primarily retweets content, rather than tweeting original content.
