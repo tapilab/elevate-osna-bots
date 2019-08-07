@@ -1,6 +1,6 @@
 ---
 layout: slide
-title: "What is a social media bot?"
+title: "What is a Twitter Bot?"
 ---
 
 Twitter bots are automated user accounts that interact with Twitter using an application programming interface (API).

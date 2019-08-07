@@ -12,7 +12,6 @@ We compared three classifiers:
 | Random Forest             | 0.89     |  0.89     |    0.89   |           
 
 The most predictive features of bots were:
-
 1. **Most common trigram**, bots tend to tweet the same contents.
 2. **Default profile**, indicates that user has not altered the background of their profile. A high percentage of bots use default profile.
 3. **Statuses count**, the number of tweets (including retweets) issued by the user. Since many bots are used to spread fake news or something, bots have a higher statuses count.
