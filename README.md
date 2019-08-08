@@ -1,11 +1,8 @@
-# elevate-osna-bots
+# Using Machine Learning to Spot a Twitter Bot
 
 This project is for the [Elevate](https://admissions.iit.edu/elevate) course SCI 498 - 410: Online Social Network Analysis, taught by [Dr. Aron Culotta](http://cs.iit.edu/~culotta/) at the Illinois Institute of Technology.
 
 Here is the [poster](docs/bot-poster-ver3.pdf) for our project. 
-
-
-# Using Machine Learning to Spot a Twitter Bot
 
 Group Members:
 
@@ -101,17 +98,19 @@ Notes:
 
 ## Results
 
-<img src="docs/assets/img/example1.png" width="100%" height="100%">
+<img src="docs/assets/img/example1.png" width="70%" height="70%">
 
 **@everyword** has tweeted every word of the English language. It started in 2007 and tweeted every thirty minutes until 2014.
 
 
-<img src="docs/assets/img/example2.png" width="100%" height="100%">
+
+<img src="docs/assets/img/example2.png" width="70%" height="70%">
 
 **@\_grammar_** detects tweets that have improper usage of grammar, and then posts solutions.
 
 
-<img src="docs/assets/img/example3.png" width="100%" height="100%">
+
+<img src="docs/assets/img/example3.png" width="70%" height="70%">
 
 **@NetflixBot** tweets steady stream of videos that are newly available to stream on Netflix in the United States.
 
